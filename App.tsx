@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import InputForm from './components/InputForm';
 import RPMPreview from './components/RPMPreview';
@@ -41,7 +42,6 @@ const App: React.FC = () => {
         <header className="sticky top-0 z-40 border-b border-purple-200/50 bg-white/70 backdrop-blur-xl shadow-sm">
           <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-4">
-              {/* Logo without frame */}
               <img 
                 src="https://i.ibb.co.com/1fQ81J6v/LOGO-PEKAYON-09.jpg" 
                 alt="Logo SDN Pekayon 09" 
@@ -75,7 +75,6 @@ const App: React.FC = () => {
             <div className="animate-fade-in-up">
                {/* Hero Section */}
                <div className="text-center space-y-6 mb-16 relative">
-                  {/* Background Blobs for Glossy Effect */}
                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-purple-200/30 rounded-full blur-[80px] pointer-events-none"></div>
                   
                   <div className="inline-flex items-center justify-center p-4 mb-2 relative group">
@@ -83,13 +82,13 @@ const App: React.FC = () => {
                     <Cpu size={48} strokeWidth={1.5} className="text-purple-600 relative z-10" />
                   </div>
                   
-                  <h2 className="text-4xl md:text-6xl font-tech font-bold text-slate-900 tracking-tight leading-tight">
-                    PERENCANAAN <br/>
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 via-fuchsia-600 to-purple-600 animate-gradient-x neon-text-glow">PEMBELAJARAN</span>
+                  <h2 className="text-4xl md:text-6xl font-tech font-bold text-slate-900 tracking-tight leading-tight uppercase">
+                    Rencana <br/>
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 via-fuchsia-600 to-purple-600 animate-gradient-x neon-text-glow">Pembelajaran</span>
                   </h2>
                   <p className="text-slate-500 max-w-2xl mx-auto text-lg leading-relaxed font-light">
-                    Hasilkan dokumen RPM terstruktur dengan integrasi kecerdasan buatan. <br/>
-                    <span className="font-medium text-purple-700">Modern, Cepat, dan Presisi.</span>
+                    Hasilkan dokumen RPM terstruktur dengan kecerdasan buatan. <br/>
+                    <span className="font-medium text-purple-700">Otomatis, Akurat, dan Profesional.</span>
                   </p>
                </div>
                
@@ -107,10 +106,10 @@ const App: React.FC = () => {
           <div className="max-w-7xl mx-auto px-4 flex flex-col items-center gap-2">
             <Zap size={16} className="text-purple-400" />
             <p className="text-slate-400 text-xs font-bold tracking-widest uppercase">
-               &copy; {new Date().getFullYear()} SDN Pekayon 09 Digital Systems
+               &copy; {new Date().getFullYear()} Sistem Digital SDN Pekayon 09
             </p>
             <p className="text-slate-400 text-[10px] font-medium tracking-wide">
-               Pengembang: Teguh Firmansyah Apriliana <span className="text-purple-500">@goehfirmaan</span>
+               Dikembangkan oleh: Teguh Firmansyah Apriliana <span className="text-purple-500">@goehfirmaan</span>
             </p>
           </div>
         </footer>

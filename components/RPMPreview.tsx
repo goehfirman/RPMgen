@@ -12,6 +12,12 @@ interface RPMPreviewProps {
 const RPMPreview: React.FC<RPMPreviewProps> = ({ data, onReset }) => {
   const contentRef = useRef<HTMLDivElement>(null);
 
+  const formatDate = (dateString: string) => {
+    if (!dateString) return "-";
+    const date = new Date(dateString);
+    return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+  };
+
   const handleCopyToDocs = async () => {
     if (!contentRef.current) return;
     
@@ -85,7 +91,7 @@ const RPMPreview: React.FC<RPMPreviewProps> = ({ data, onReset }) => {
       {/* Action Bar - Modern Glossy White/Purple */}
       <div className="sticky top-4 z-50 flex flex-wrap gap-3 justify-between items-center bg-white/80 backdrop-blur-xl border border-purple-200 p-4 rounded-xl shadow-lg shadow-purple-200/50 mb-8 no-print text-slate-900">
         <button onClick={onReset} className="flex items-center gap-2 text-slate-500 hover:text-purple-600 font-bold transition uppercase text-xs tracking-wider">
-          <ArrowLeft size={16} /> Edit Data
+          <ArrowLeft size={16} /> Ubah Data
         </button>
         <div className="flex gap-3">
           <button onClick={handleCopyToDocs} className="flex items-center gap-2 bg-white border border-purple-200 hover:bg-purple-50 px-4 py-2 rounded-lg font-bold text-xs uppercase tracking-wide transition text-purple-700 shadow-sm">
@@ -94,7 +100,7 @@ const RPMPreview: React.FC<RPMPreviewProps> = ({ data, onReset }) => {
           </button>
           <button onClick={handleDownloadPDF} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white border border-purple-600 px-4 py-2 rounded-lg font-bold text-xs uppercase tracking-wide transition shadow-md shadow-purple-500/30">
             <Download size={16} />
-            <span className="hidden sm:inline">Download PDF</span>
+            <span className="hidden sm:inline">Unduh PDF</span>
           </button>
         </div>
       </div>
@@ -254,8 +260,8 @@ const RPMPreview: React.FC<RPMPreviewProps> = ({ data, onReset }) => {
         <table>
           <tbody>
             <tr>
-              <td className="label-cell">Nama Satuan Pendidikan</td>
-              <td>SDN Pekayon 09</td>
+              <td className="label-cell">Satuan Pendidikan (Tgl)</td>
+              <td>SDN Pekayon 09 ({formatDate(data.documentDate)})</td>
               <td className="label-cell">Mata Pelajaran</td>
               <td>{data.subject}</td>
             </tr>
@@ -445,10 +451,9 @@ const RPMPreview: React.FC<RPMPreviewProps> = ({ data, onReset }) => {
                 <p style={{ margin: 0 }}>NIP. {data.principalNIP}</p>
             </div>
             <div style={{ textAlign: 'center', width: '40%' }}>
-                <p style={{ margin: 0 }}>Jakarta, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                <p style={{ margin: 0 }}>Jakarta, {formatDate(data.documentDate)}</p>
                 <p style={{ margin: 0, fontWeight: 'bold' }}>Guru Kelas / Mata Pelajaran</p>
                 
-                {/* Conditional Signature Area */}
                 <div style={{ 
                     height: '180px', 
                     display: 'flex', 

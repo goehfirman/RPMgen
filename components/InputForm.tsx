@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   ClassLevel, Semester, Subject, PedagogicalPractice, 
   GraduateDimension, FormData
@@ -14,6 +15,8 @@ interface InputFormProps {
 const InputForm: React.FC<InputFormProps> = ({ onSubmit, isLoading }) => {
   const [apiKey, setApiKey] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
+  const today = new Date().toISOString().split('T')[0];
+  const dateInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<FormData>({
     teacherName: '',
@@ -29,7 +32,8 @@ const InputForm: React.FC<InputFormProps> = ({ onSubmit, isLoading }) => {
     meetingCount: 1,
     duration: '2 x 35 menit',
     meetings: [{ meetingNumber: 1, pedagogy: PedagogicalPractice.InkuiriDiscovery }],
-    dimensions: []
+    dimensions: [],
+    documentDate: today
   });
 
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -37,20 +41,16 @@ const InputForm: React.FC<InputFormProps> = ({ onSubmit, isLoading }) => {
   const [loadingField, setLoadingField] = useState<'cp' | 'tp' | 'materi' | null>(null);
   const [selectedSuggestions, setSelectedSuggestions] = useState<string[]>([]);
 
-  // Load API Key from LocalStorage on mount
   useEffect(() => {
     const savedKey = localStorage.getItem('gemini_api_key');
     if (savedKey) setApiKey(savedKey);
   }, []);
 
-  // Update meetings array when count changes
   useEffect(() => {
     setFormData(prev => {
       const currentCount = prev.meetings.length;
       const targetCount = prev.meetingCount;
-      
       if (currentCount === targetCount) return prev;
-
       let newMeetings = [...prev.meetings];
       if (targetCount > currentCount) {
         for (let i = currentCount + 1; i <= targetCount; i++) {
@@ -63,12 +63,6 @@ const InputForm: React.FC<InputFormProps> = ({ onSubmit, isLoading }) => {
     });
   }, [formData.meetingCount]);
 
-  const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setApiKey(val);
-    localStorage.setItem('gemini_api_key', val);
-  };
-
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -77,11 +71,7 @@ const InputForm: React.FC<InputFormProps> = ({ onSubmit, isLoading }) => {
   const handleDimensionChange = (dim: GraduateDimension) => {
     setFormData(prev => {
       const exists = prev.dimensions.includes(dim);
-      if (exists) {
-        return { ...prev, dimensions: prev.dimensions.filter(d => d !== dim) };
-      } else {
-        return { ...prev, dimensions: [...prev.dimensions, dim] };
-      }
+      return { ...prev, dimensions: exists ? prev.dimensions.filter(d => d !== dim) : [...prev.dimensions, dim] };
     });
   };
 
@@ -93,25 +83,15 @@ const InputForm: React.FC<InputFormProps> = ({ onSubmit, isLoading }) => {
 
   const handleGetSuggestion = async (field: 'cp' | 'tp' | 'materi') => {
     if (!apiKey) {
-      alert("Mohon isi Google API Key terlebih dahulu di bagian atas form.");
+      alert("Mohon masukkan API Key terlebih dahulu.");
       return;
     }
-
     setLoadingField(field);
     setSuggestions([]);
-    setSelectedSuggestions([]); // Reset selections
+    setSelectedSuggestions([]);
     setActiveField(null);
-    
-    // Determine context for the suggestion
-    let context = "";
-    if (field === 'tp') {
-        context = formData.cp;
-    } else if (field === 'materi') {
-        context = `CP: ${formData.cp}. TP: ${formData.tp}`;
-    }
-
+    let context = field === 'tp' ? formData.cp : (field === 'materi' ? `CP: ${formData.cp}. TP: ${formData.tp}` : "");
     const opts = await getFieldSuggestions(field, formData.subject, formData.classLevel, apiKey, context);
-    
     setSuggestions(opts);
     setActiveField(field);
     setLoadingField(null);
@@ -138,8 +118,7 @@ const InputForm: React.FC<InputFormProps> = ({ onSubmit, isLoading }) => {
 
   const handleApplySelected = () => {
     if (activeField && selectedSuggestions.length > 0) {
-      const joinedValue = selectedSuggestions.join('\n');
-      setFormData(prev => ({ ...prev, [activeField]: joinedValue }));
+      setFormData(prev => ({ ...prev, [activeField]: selectedSuggestions.join('\n') }));
       setActiveField(null);
       setSuggestions([]);
       setSelectedSuggestions([]);
@@ -148,35 +127,40 @@ const InputForm: React.FC<InputFormProps> = ({ onSubmit, isLoading }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiKey) {
-      alert("Mohon isi Google API Key terlebih dahulu.");
-      return;
-    }
+    if (!apiKey) return alert("API Key wajib diisi.");
     onSubmit(formData, apiKey);
   };
 
-  // --- Styles Constants for Modern Glossy UI ---
+  const triggerDatePicker = () => {
+    if (dateInputRef.current) {
+      // Modern browsers support showPicker()
+      try {
+        if ('showPicker' in HTMLInputElement.prototype) {
+          dateInputRef.current.showPicker();
+        } else {
+          dateInputRef.current.focus();
+        }
+      } catch (e) {
+        dateInputRef.current.focus();
+      }
+    }
+  };
+
   const SectionTitle = ({ title, icon: Icon }: { title: string, icon: any }) => (
     <div className="mb-8 mt-12 pb-4 border-b border-purple-200 flex items-center justify-between">
       <div className="flex items-center gap-3">
-        <div className="p-2 bg-purple-50 rounded-lg border border-purple-200 shadow-sm text-purple-600">
-          <Icon size={18} />
-        </div>
+        <div className="p-2 bg-purple-50 rounded-lg border border-purple-200 shadow-sm text-purple-600"><Icon size={18} /></div>
         <h3 className="text-lg font-tech font-bold text-slate-800 tracking-wider uppercase">{title}</h3>
       </div>
-      <div className="h-1 w-20 bg-gradient-to-r from-purple-400 to-transparent rounded-full"></div>
     </div>
   );
 
   const InputLabel = ({ label, required }: { label: string, required?: boolean }) => (
-    <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-widest">
-      {label} {required && <span className="text-purple-600">*</span>}
-    </label>
+    <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-widest">{label} {required && "*"}</label>
   );
 
-  // Glossy White Input Styling
-  const InputClasses = "w-full px-4 py-3 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:border-purple-400 focus:ring-4 focus:ring-purple-100 focus:shadow-[0_0_15px_rgba(168,85,247,0.1)] outline-none transition-all duration-300 shadow-sm";
-  const SelectClasses = "w-full px-4 py-3 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-900 focus:border-purple-400 focus:ring-4 focus:ring-purple-100 outline-none appearance-none cursor-pointer transition-all duration-300 hover:border-purple-300 shadow-sm";
+  const InputClasses = "w-full px-4 py-3 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-900 focus:border-purple-400 focus:ring-4 focus:ring-purple-100 outline-none transition-all shadow-sm";
+  const SelectClasses = "w-full px-4 py-3 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-900 focus:border-purple-400 focus:ring-4 focus:ring-purple-100 outline-none appearance-none cursor-pointer transition-all shadow-sm";
 
   const renderSuggestionInput = (field: 'cp' | 'tp' | 'materi', label: string, rows: number, placeholder: string) => {
     const isMultiSelect = field === 'tp' || field === 'materi';
@@ -192,7 +176,7 @@ const InputForm: React.FC<InputFormProps> = ({ onSubmit, isLoading }) => {
                   className="px-3 py-1.5 bg-white border border-purple-200 hover:border-purple-400 hover:bg-purple-50 text-purple-600 rounded-md text-[10px] font-bold tracking-wider uppercase transition-all flex items-center gap-2 shadow-sm"
                >
                   {loadingField === field ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-                  {loadingField === field ? 'Processing...' : 'AI Suggestion'}
+                  {loadingField === field ? 'Memproses...' : 'Saran AI'}
                </button>
           </div>
           <div className="relative">
@@ -205,17 +189,14 @@ const InputForm: React.FC<InputFormProps> = ({ onSubmit, isLoading }) => {
                 className={`${InputClasses} resize-none leading-relaxed bg-white/80`}
                 placeholder={placeholder} 
             />
-            {/* Corner Accent */}
-            <div className="absolute -bottom-1 -right-1 w-3 h-3 border-r border-b border-purple-400/50 rounded-br pointer-events-none"></div>
           </div>
           
-          {/* Dropdown Suggestions */}
           {activeField === field && suggestions.length > 0 && (
-              <div className="absolute z-30 left-0 right-0 w-full bg-white border border-purple-200 shadow-2xl shadow-purple-900/10 rounded-xl mt-2 overflow-hidden animate-fade-in-up backdrop-blur-xl ring-1 ring-purple-100">
+              <div className="absolute z-30 left-0 right-0 w-full bg-white border border-purple-200 shadow-2xl rounded-xl mt-2 overflow-hidden animate-fade-in-up backdrop-blur-xl ring-1 ring-purple-100">
                    <div className="px-4 py-3 bg-purple-50/50 border-b border-purple-100 flex justify-between items-center">
                       <span className="text-[10px] font-bold text-purple-600 uppercase tracking-widest flex items-center gap-2">
                         <Activity size={12} />
-                        {isMultiSelect ? 'Select Multiple' : 'Select One'}
+                        {isMultiSelect ? 'Pilih Beberapa' : 'Pilih Satu'}
                       </span>
                       <button type="button" onClick={() => setActiveField(null)} className="text-slate-400 hover:text-purple-600 transition">
                           <X size={16} />
@@ -250,9 +231,9 @@ const InputForm: React.FC<InputFormProps> = ({ onSubmit, isLoading }) => {
                          type="button"
                          onClick={handleApplySelected}
                          disabled={selectedSuggestions.length === 0}
-                         className="w-full py-3 bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white text-xs font-bold uppercase tracking-widest rounded-lg transition-all shadow-lg shadow-purple-200 disabled:opacity-50 disabled:shadow-none"
+                         className="w-full py-3 bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white text-xs font-bold uppercase tracking-widest rounded-lg transition-all shadow-lg disabled:opacity-50"
                        >
-                         Confirm {selectedSuggestions.length} Selection
+                         Konfirmasi {selectedSuggestions.length} Pilihan
                        </button>
                      </div>
                    )}
@@ -263,27 +244,22 @@ const InputForm: React.FC<InputFormProps> = ({ onSubmit, isLoading }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white/60 backdrop-blur-xl border border-white/40 p-8 md:p-12 max-w-5xl mx-auto rounded-2xl shadow-xl shadow-purple-500/5 relative overflow-hidden ring-1 ring-purple-100">
+    <form onSubmit={handleSubmit} className="bg-white/60 backdrop-blur-xl border border-white/40 p-8 md:p-12 max-w-5xl mx-auto rounded-2xl shadow-xl ring-1 ring-purple-100">
       
-      {/* Decorative Elements */}
-      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-purple-400 to-transparent opacity-50"></div>
-      
-      {/* API Key Configuration */}
+      {/* Otorisasi Sistem */}
       <div className="bg-white rounded-xl p-6 border border-purple-100 shadow-sm mb-10 relative group">
-        <div className="absolute -inset-[1px] bg-gradient-to-r from-purple-400/20 to-fuchsia-400/20 rounded-xl blur opacity-0 group-hover:opacity-100 transition duration-1000"></div>
         <div className="flex flex-col md:flex-row md:items-center gap-6 relative z-10">
           <div className="flex-1">
              <label className="text-[10px] font-bold text-purple-600 uppercase tracking-widest mb-2 block flex items-center gap-2">
-               <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse"></span>
-               System Authorization: Gemini API Key
+               Otorisasi Sistem: Gemini API Key
              </label>
              <div className="relative">
                <input 
                  type={showApiKey ? "text" : "password"} 
                  value={apiKey} 
-                 onChange={handleApiKeyChange}
-                 placeholder="Paste Key Here..." 
-                 className="w-full bg-slate-50 border border-slate-200 focus:border-purple-400 rounded-lg px-4 py-3 text-sm font-mono text-slate-700 placeholder:text-slate-400 outline-none transition-all shadow-inner"
+                 onChange={(e) => { setApiKey(e.target.value); localStorage.setItem('gemini_api_key', e.target.value); }}
+                 placeholder="Tempel Kunci di Sini..." 
+                 className="w-full bg-slate-50 border border-slate-200 focus:border-purple-400 rounded-lg px-4 py-3 text-sm font-mono text-slate-700 placeholder:text-slate-400 outline-none transition-all"
                />
              </div>
           </div>
@@ -302,76 +278,52 @@ const InputForm: React.FC<InputFormProps> = ({ onSubmit, isLoading }) => {
               rel="noreferrer" 
               className="px-5 py-2.5 bg-white border border-purple-200 text-purple-600 text-xs font-bold rounded-lg hover:bg-purple-50 hover:border-purple-300 transition-all uppercase tracking-wide shadow-sm"
              >
-               Create Key
+               Buat Kunci
              </a>
           </div>
         </div>
       </div>
 
-      {/* Identitas Guru & Sekolah */}
+      {/* 1. Informasi Pendidik */}
       <section>
         <SectionTitle title="1. Informasi Pendidik" icon={User} />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="opacity-60 pointer-events-none grayscale">
+          <div>
             <InputLabel label="Nama Satuan Pendidikan" />
-            <input type="text" value="SDN Pekayon 09" disabled className={InputClasses} />
+            <input type="text" value="SDN Pekayon 09" disabled className={`${InputClasses} bg-slate-50 font-semibold text-slate-400`} />
           </div>
-          <div className="hidden md:block"></div>
-          
-          <div>
-            <InputLabel label="Nama Guru" required />
-            <input required name="teacherName" value={formData.teacherName} onChange={handleChange} className={InputClasses} placeholder="Nama Lengkap & Gelar" />
+          <div className="relative cursor-pointer" onClick={triggerDatePicker}>
+            <InputLabel label="Tanggal Dokumen (Klik Area Ini)" required />
+            <div className="relative">
+              <input 
+                ref={dateInputRef}
+                type="date" 
+                required 
+                name="documentDate" 
+                value={formData.documentDate} 
+                onChange={handleChange} 
+                className={`${InputClasses} cursor-pointer appearance-none pr-10 hover:border-purple-400`}
+                onClick={(e) => e.stopPropagation()} 
+              />
+              <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 text-purple-500 pointer-events-none" size={18} />
+            </div>
           </div>
-          <div>
-            <InputLabel label="NIP Guru" required />
-            <input required name="teacherNIP" value={formData.teacherNIP} onChange={handleChange} className={InputClasses} placeholder="NIP tanpa spasi" />
-          </div>
-          
-          <div>
-            <InputLabel label="Nama Kepala Sekolah" />
-            <input name="principalName" value={formData.principalName} onChange={handleChange} className={InputClasses} />
-          </div>
-          <div>
-            <InputLabel label="NIP Kepala Sekolah" />
-            <input name="principalNIP" value={formData.principalNIP} onChange={handleChange} className={InputClasses} />
-          </div>
+          <div><InputLabel label="Nama Guru" required /><input required name="teacherName" value={formData.teacherName} onChange={handleChange} className={InputClasses} placeholder="Nama Lengkap & Gelar" /></div>
+          <div><InputLabel label="NIP Guru" required /><input required name="teacherNIP" value={formData.teacherNIP} onChange={handleChange} className={InputClasses} placeholder="NIP tanpa spasi" /></div>
+          <div><InputLabel label="Nama Kepala Sekolah" /><input name="principalName" value={formData.principalName} onChange={handleChange} className={InputClasses} /></div>
+          <div><InputLabel label="NIP Kepala Sekolah" /><input name="principalNIP" value={formData.principalNIP} onChange={handleChange} className={InputClasses} /></div>
         </div>
       </section>
 
-      {/* Informasi Pembelajaran */}
+      {/* 2. Kurikulum & Materi */}
       <section>
         <SectionTitle title="2. Kurikulum & Materi" icon={BookOpen} />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="relative">
-            <InputLabel label="Kelas" />
-            <div className="relative">
-              <select name="classLevel" value={formData.classLevel} onChange={handleChange} className={SelectClasses}>
-                {Object.values(ClassLevel).map(c => <option key={c} value={c}>Kelas {c}</option>)}
-              </select>
-              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
-            </div>
-          </div>
-          <div className="relative">
-            <InputLabel label="Semester" />
-            <div className="relative">
-              <select name="semester" value={formData.semester} onChange={handleChange} className={SelectClasses}>
-                {Object.values(Semester).map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
-            </div>
-          </div>
-          <div className="relative">
-            <InputLabel label="Mata Pelajaran" />
-            <div className="relative">
-              <select name="subject" value={formData.subject} onChange={handleChange} className={SelectClasses}>
-                {Object.values(Subject).map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
-            </div>
-          </div>
+          <div><InputLabel label="Kelas" /><select name="classLevel" value={formData.classLevel} onChange={handleChange} className={SelectClasses}>{Object.values(ClassLevel).map(c => <option key={c} value={c}>Kelas {c}</option>)}</select></div>
+          <div><InputLabel label="Semester" /><select name="semester" value={formData.semester} onChange={handleChange} className={SelectClasses}>{Object.values(Semester).map(s => <option key={s} value={s}>{s}</option>)}</select></div>
+          <div><InputLabel label="Mata Pelajaran" /><select name="subject" value={formData.subject} onChange={handleChange} className={SelectClasses}>{Object.values(Subject).map(s => <option key={s} value={s}>{s}</option>)}</select></div>
         </div>
 
-        {/* Suggestion Inputs */}
         <div className="space-y-6">
              {renderSuggestionInput('cp', 'Capaian Pembelajaran (CP)', 3, 'Tulis CP atau gunakan tombol AI...')}
              {renderSuggestionInput('tp', 'Tujuan Pembelajaran (TP)', 2, 'Tulis TP atau gunakan tombol AI...')}
@@ -379,92 +331,58 @@ const InputForm: React.FC<InputFormProps> = ({ onSubmit, isLoading }) => {
         </div>
       </section>
 
-      {/* Detil Pertemuan */}
+      {/* 3. Strategi Pertemuan */}
       <section>
         <SectionTitle title="3. Strategi Pertemuan" icon={Calendar} />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-           <div className="relative">
-            <InputLabel label="Jumlah Pertemuan" />
-            <div className="relative">
-              <select name="meetingCount" value={formData.meetingCount} onChange={(e) => setFormData({...formData, meetingCount: parseInt(e.target.value)})} className={SelectClasses}>
-                {[1, 2, 3, 4, 5, 6, 7, 8].map(n => <option key={n} value={n}>{n} Pertemuan</option>)}
-              </select>
-              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
-            </div>
-           </div>
-           <div>
-            <InputLabel label="Durasi Total" />
-            <input name="duration" value={formData.duration} onChange={handleChange} className={InputClasses} placeholder="Contoh: 2 x 35 menit" />
-           </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+          <div><InputLabel label="Jumlah Pertemuan" /><select name="meetingCount" value={formData.meetingCount} onChange={(e) => setFormData(p => ({...p, meetingCount: parseInt(e.target.value)}))} className={SelectClasses}>{[1,2,3,4,5,6,7,8].map(n => <option key={n} value={n}>{n} Pertemuan</option>)}</select></div>
+          <div><InputLabel label="Alokasi Waktu (Contoh: 2 x 35 menit)" /><input name="duration" value={formData.duration} onChange={handleChange} className={InputClasses} placeholder="2 x 35 menit" /></div>
         </div>
-        
         <div className="space-y-4">
-           <InputLabel label="Model Pembelajaran per Pertemuan" />
-           {formData.meetings.map((meeting, idx) => (
-             <div key={idx} className="flex items-center gap-4 p-4 rounded-xl border border-purple-100 bg-white hover:border-purple-300 transition-all shadow-sm">
-                <span className="text-[10px] font-bold text-purple-600 uppercase tracking-widest w-28">Pertemuan {meeting.meetingNumber}</span>
-                <div className="h-6 w-px bg-slate-200"></div>
-                <div className="relative flex-1">
-                  <select 
-                    value={meeting.pedagogy} 
-                    onChange={(e) => handlePedagogyChange(idx, e.target.value as PedagogicalPractice)}
-                    className="w-full bg-transparent text-sm font-medium text-slate-900 outline-none cursor-pointer appearance-none"
-                  >
-                    {Object.values(PedagogicalPractice).map(p => <option key={p} value={p}>{p}</option>)}
-                  </select>
-                  <ChevronDown className="absolute right-0 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
-                </div>
-             </div>
-           ))}
+          <InputLabel label="Model Pembelajaran per Pertemuan" />
+          {formData.meetings.map((m, idx) => (
+            <div key={idx} className="flex items-center gap-4 p-4 bg-white border border-slate-100 rounded-lg shadow-sm">
+              <span className="text-[10px] font-bold text-slate-400 uppercase w-24">Pertemuan {m.meetingNumber}</span>
+              <select 
+                value={m.pedagogy} 
+                onChange={(e) => handlePedagogyChange(idx, e.target.value as PedagogicalPractice)}
+                className="flex-1 bg-slate-50 border border-slate-200 rounded px-3 py-2 text-xs font-medium focus:outline-none focus:border-purple-300"
+              >
+                {Object.values(PedagogicalPractice).map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+          ))}
         </div>
       </section>
 
-      {/* Profil Lulusan - Simplified Checkbox Style */}
+      {/* 4. Profil Lulusan */}
       <section>
         <SectionTitle title="4. Profil Lulusan" icon={BrainCircuit} />
-        <div className="bg-white/50 p-6 rounded-xl border border-purple-100 shadow-sm">
-           <InputLabel label="Pilih Dimensi yang Relevan" />
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-8 mt-4">
-             {Object.values(GraduateDimension).map((dim) => (
-               <label key={dim} className="flex items-center gap-3 cursor-pointer group hover:bg-purple-50 p-2 rounded transition-colors">
-                  <div className="relative flex items-center">
-                    <input 
-                      type="checkbox" 
-                      checked={formData.dimensions.includes(dim)} 
-                      onChange={() => handleDimensionChange(dim)} 
-                      className="peer h-5 w-5 cursor-pointer appearance-none rounded border border-slate-300 bg-white checked:border-purple-500 checked:bg-purple-500 transition-all" 
-                    />
-                    <Check 
-                      size={14} 
-                      className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity" 
-                      strokeWidth={3}
-                    />
-                  </div>
-                  <span className={`text-sm transition-colors ${formData.dimensions.includes(dim) ? 'text-purple-700 font-medium' : 'text-slate-600 group-hover:text-purple-800'}`}>
-                    {dim}
-                  </span>
-               </label>
-             ))}
-           </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {Object.values(GraduateDimension).map((dim) => (
+            <label key={dim} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${formData.dimensions.includes(dim) ? 'bg-purple-50 border-purple-300 shadow-sm' : 'bg-white border-slate-100 hover:border-purple-200'}`}>
+              <input type="checkbox" checked={formData.dimensions.includes(dim)} onChange={() => handleDimensionChange(dim)} className="hidden" />
+              <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${formData.dimensions.includes(dim) ? 'bg-purple-600 border-purple-600' : 'bg-white border-slate-300'}`}>
+                {formData.dimensions.includes(dim) && <Check size={12} className="text-white" strokeWidth={4} />}
+              </div>
+              <span className={`text-sm ${formData.dimensions.includes(dim) ? 'text-purple-900 font-semibold' : 'text-slate-600'}`}>{dim}</span>
+            </label>
+          ))}
         </div>
       </section>
 
-      {/* Submit Button - Glossy Style */}
-      <div className="pt-8">
-        <button 
-          type="submit" 
-          disabled={isLoading}
-          className="w-full bg-transparent border-2 border-purple-500 hover:bg-purple-50 text-purple-600 hover:text-purple-700 font-tech font-bold text-base uppercase tracking-[0.2em] py-5 rounded-lg shadow-[0_0_15px_rgba(168,85,247,0.2)] hover:shadow-[0_0_25px_rgba(168,85,247,0.4)] disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-4 transition-all duration-300 backdrop-blur-sm group"
-        >
+      {/* Tombol Buat */}
+      <div className="pt-12">
+        <button type="submit" disabled={isLoading} className="w-full bg-purple-600 hover:bg-purple-700 text-white font-tech font-bold py-5 rounded-lg shadow-lg flex justify-center items-center gap-4 transition-all uppercase tracking-[0.2em] disabled:opacity-50 group">
           {isLoading ? (
-            <>
-              <Loader2 className="animate-spin text-purple-600" size={24} />
-              <span className="text-purple-600/80">Processing Data...</span>
-            </>
+            <div className="flex items-center gap-3">
+              <Loader2 className="animate-spin" size={24} />
+              <span>Menghasilkan RPM...</span>
+            </div>
           ) : (
             <>
-              <span>Initiate Generation</span>
-              <Sparkles className="text-purple-500 group-hover:scale-125 transition-transform" size={20} fill="currentColor" />
+              <span>Buat RPM Sekarang</span>
+              <Sparkles size={20} className="group-hover:scale-125 transition-transform" />
             </>
           )}
         </button>

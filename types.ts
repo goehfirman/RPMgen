@@ -51,8 +51,8 @@ export interface MeetingPlan {
 export interface FormData {
   teacherName: string;
   teacherNIP: string;
-  principalName: string; // Default: Veria Wulandari
-  principalNIP: string; // Default: 198102012008012028
+  principalName: string; 
+  principalNIP: string;
   classLevel: ClassLevel;
   semester: Semester;
   subject: Subject;
@@ -63,6 +63,7 @@ export interface FormData {
   duration: string;
   meetings: MeetingPlan[];
   dimensions: GraduateDimension[];
+  documentDate: string;
 }
 
 export interface RubricRow {
